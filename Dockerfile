@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     zip \
-    unzip
-
+    unzip\
+    xz-utils
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -26,11 +26,15 @@ RUN mkdir -p /home/$user/.composer && \
 RUN mkdir -p /home/data && \
     chown -R $user:$user /home/data
 
-COPY --chown=cristiano:cristiano ENIGMA_JVN_analysis.py /home
+COPY --chown=$user:$user ENIGMA_JVN_analysis.py /home
 
 COPY --chown=$user:$user requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 ENV PYTHONUNBUFFERED 1
+
+COPY --chown=$user:$user networkx.tar.xz /usr/local/lib/python3.9/site-packages/
+WORKDIR /usr/local/lib/python3.9/site-packages/
+RUN tar xf networkx.tar.xz && rm networkx.tar.xz
 
 USER $user
 
