@@ -17,7 +17,9 @@ import warnings
 import networkx as nx
 from scipy import stats
 from sklearn.linear_model import LinearRegression
+import logging
 
+logging.basicConfig(filename=f"{output_dir}/log", level=logging.DEBUG)
 #-----------------------------------------------------------------------------------------------------------------
 
 
@@ -46,6 +48,8 @@ thickness_volume = thickness_volume.loc[to_keep, :]
 
 demographics.to_csv(f"{output_dir}/Demographics.csv")
 thickness_volume.to_csv(f"{output_dir}/CT_Volume.csv")
+
+logging.debug("\n\nDATAFRAMES GENERATED")
 
 #-----------------------------------------------------------------------------------------------------------------
 
@@ -76,6 +80,8 @@ residuals[brain_regions] = covar_correct(X, Y, data)
 
 residuals.to_csv(f"{output_dir}/Data_residuals.csv")
 
+logging.debug("\n\nDATA CORRECTED FOR CONFOUNDS")
+
 #-----------------------------------------------------------------------------------------------------------------
 
 
@@ -92,6 +98,8 @@ zscores = ((residuals - mu.loc[0]) / sd.loc[0]).drop('Dx', axis=1)
 
 
 zscores.to_csv(f"{output_dir}/Data_zscores.csv")
+
+logging.debug("\n\nDATA ZSCORED")
 
 #-----------------------------------------------------------------------------------------------------------------
 
@@ -147,6 +155,8 @@ for metric in metrics:
         
 output_df.to_csv(f"{output_dir}/Graph_metrics.csv")
 
+logging.debug("\n\nGRAPH METRICS EXTRACTED")
+
 #-----------------------------------------------------------------------------------------------------------------
 
 
@@ -186,4 +196,11 @@ for Kmin, Kmax in K_ranges:
     aggregation_table['Kmax'] = Kmax
     
     aggregation_table.to_csv(f"{output_dir}/Group_stats_K{Kmin}-{Kmax}.csv")
+    
+    
+
+logging.debug(f"\n\nLocal variables:{list(locals()}")
+
+logging.debug(F"\n\nOUTPUT TABLES GENERATED")
+
     
