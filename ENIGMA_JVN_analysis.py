@@ -1,10 +1,10 @@
 # Input data paths
 
-data_dir = "/home/fralberti/Documents/BlackBox/Prj-ENIGMA JCN in AN/enigmaedpadova_anstudy/test_data"
+data_dir = "/home/data"
 covariates = f"{data_dir}/Covariates_simulation.csv"
 thickness = f"{data_dir}/CorticalMeasuresENIGMA_ThickAvg.csv"
 volume = f"{data_dir}/SubcorticalMeasuresENIGMA_VolAvg.csv"
-output_dir = f"{data_dir}/data/output"
+output_dir = f"home/output"
 
 #-----------------------------------------------------------------------------------------------------------------
 
