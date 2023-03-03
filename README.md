@@ -1,9 +1,8 @@
 
-# Enigma
+# ENIGMA Consortium - Joint-Variation Graph Analysis
 
- Please provide a project description.
-
-
+This project was developed to analyze structural MRI data of the ENIGMA consortium. This script uses previously extracted morphological data to compute individualized joint-variantion graphs of cortical thickness, extracts a set of topological properties of such graphs, and computes descriptive statistics for meta-analysis. 
+Specifically, this script was created to investigate alterations in patterns of cortical thickness in individuals with anorexia nervosa.
 
 
 ## Work environment setup
