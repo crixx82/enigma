@@ -1,3 +1,4 @@
 # gitignore
-!**data/nullfile.txt
-**data/
+!*nullfile.txt
+**data/*
+log
