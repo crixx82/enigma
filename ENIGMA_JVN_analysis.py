@@ -201,6 +201,6 @@ for Kmin, Kmax in K_ranges:
 
 logging.debug(f"\n\nLocal variables:{list(locals())}")
 
-logging.debug(F"\n\nOUTPUT TABLES GENERATED")
+logging.debug(f"\n\nOUTPUT TABLES GENERATED")
 
     
