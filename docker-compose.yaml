@@ -12,6 +12,7 @@ services:
     working_dir: /home
     volumes:
       - ./data/:/home/data
+      - ./output/:/home/output
 
 
 
