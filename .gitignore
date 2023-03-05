@@ -1,0 +1,6 @@
+# gitignore
+**data/*
+**output/*
+*log*
+!*nullfile.txt
+

@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip\
     xz-utils
+    
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -25,6 +26,8 @@ RUN mkdir -p /home/$user/.composer && \
     chown -R $user:$user /home/$user
 RUN mkdir -p /home/data && \
     chown -R $user:$user /home/data
+RUN mkdir -p /home/output && \
+    chown -R $user:$user /home/output
 
 COPY --chown=$user:$user ENIGMA_JVN_analysis.py /home
 

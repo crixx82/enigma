@@ -8,10 +8,11 @@ services:
       dockerfile: Dockerfile
     image: enigmaimgv2
     container_name: enigmacontv2
-    restart: unless-stopped
+    restart: on-failure #unless-stopped
     working_dir: /home
     volumes:
       - ./data/:/home/data
+      - ./output/:/home/output
 
 
 
