@@ -21,7 +21,7 @@ WORKDIR /usr/src/app
 
 RUN pip install -U  --upgrade pip
 
-RUN useradd -G www-data,root -u $uid -d /home/$user $user
+RUN useradd -G root -u $uid -d /home/$user $user
 RUN mkdir -p /home/$user/.composer && \
     chown -R $user:$user /home/$user
 RUN mkdir -p /home/data && \

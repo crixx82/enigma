@@ -2,8 +2,8 @@ services:
   panel:
     build:
       args:
-        user: YOUR-USER-NAME
-        uid: 1001
+        user: {YOUR-USER-NAME}
+        uid: 5000
       context: ./
       dockerfile: Dockerfile
     image: enigmaimgv2
