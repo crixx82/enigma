@@ -58,7 +58,7 @@ thickness_volume = thickness_volume.loc[to_keep, :]
 demographics.to_csv(f"{data_dir}/Demographics.csv")
 thickness_volume.to_csv(f"{data_dir}/CT_Volume.csv")
 
-logging.debug("\n\nDATAFRAME CREATED\n{log_func(existing)}")
+logging.debug(f"\n\nDATAFRAME CREATED\n{log_func(existing)}")
 
 #-----------------------------------------------------------------------------------------------------------------
 
@@ -89,7 +89,7 @@ residuals[brain_regions] = covar_correct(X, Y, data)
 
 residuals.to_csv(f"{data_dir}/Data_residuals.csv")
 
-logging.debug("\n\nDATA CORRECTED FOR CONFOUNDS\n{log_func(existing)}")
+logging.debug(f"\n\nDATA CORRECTED FOR CONFOUNDS\n{log_func(existing)}")
 
 #-----------------------------------------------------------------------------------------------------------------
 
@@ -115,10 +115,10 @@ logging.debug("\n\nDATA ZSCORED\n{log_func(existing)}")
 
 # Generate graphs and extract metrics
 
-thresholds = np.arange(97,101, 1)
+thresholds = np.arange(55,96, 1)
 
 demographics = pd.read_csv(f"{data_dir}/Demographics.csv", index_col="SubjID")
-zscores = pd.read_csv(f"{output_dir}/Data_zscores.csv", index_col="SubjID")
+zscores = pd.read_csv(f"{data_dir}/Data_zscores.csv", index_col="SubjID")
 demo_columns = demographics.columns
 brain_regions = zscores.columns
 
@@ -164,7 +164,7 @@ for metric in metrics:
         
 output_df.to_csv(f"{output_dir}/Graph_metrics.csv")
 
-logging.debug("\n\nGRAPH METRICS EXTRACTED\n{log_func(existing)}")
+logging.debug(f"\n\nGRAPH METRICS EXTRACTED\n{log_func(existing)}")
 
 #-----------------------------------------------------------------------------------------------------------------
 
@@ -196,8 +196,8 @@ contrasts = [['Dx', 'Dx3'],
 
 
 
-Ks = np.arange(gmetrics.Density.min(), gmetrics.Density.max()+1, 1)
-K_ranges = np.array([(Kmin, Kmax) for Kmin in Ks for Kmax in Ks[Ks>=Kmin+1]])
+Ks = np.arange(gmetrics.Density.min(), gmetrics.Density.max()+1, 5)
+K_ranges = np.array([(Kmin, Kmax) for Kmin in Ks for Kmax in Ks[Ks>=Kmin+10]])
 
 for Kmin, Kmax in K_ranges:
     AUC = gmetrics[(gmetrics.Density >= Kmin) & (gmetrics.Density <= Kmax)].groupby('SubjID').sum()
@@ -231,4 +231,4 @@ for Kmin, Kmax in K_ranges:
     aggregation_table.to_csv(f"{output_dir}/Group_stats_K{Kmin}-{Kmax}.csv")
         
         
-logging.debug("\n\nSTATISTICS COMPUTED\n{log_func(existing)}")
+logging.debug(f"\n\nSTATISTICS COMPUTED\n{log_func(existing)}")
