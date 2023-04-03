@@ -4,8 +4,10 @@ data_dir = "/home/data"
 covariates = f"{data_dir}/Covariates_simulation.csv"
 thickness = f"{data_dir}/CorticalMeasuresENIGMA_ThickAvg.csv"
 volume = f"{data_dir}/SubcorticalMeasuresENIGMA_VolAvg.csv"
-output_dir = "/home/output"
+output_dir = f"/home/output"
+
 #-----------------------------------------------------------------------------------------------------------------
+
 
 # Import dependencies
 
@@ -18,7 +20,7 @@ from scipy import stats
 from sklearn.linear_model import LinearRegression
 import logging
 
-logging.basicConfig(filename=f"{output_dir}/log.txt", level=logging.DEBUG)
+logging.basicConfig(filename=f"{output_dir}/log", level=logging.DEBUG)
 #-----------------------------------------------------------------------------------------------------------------
 
 
@@ -27,8 +29,10 @@ logging.basicConfig(filename=f"{output_dir}/log.txt", level=logging.DEBUG)
 demographics = pd.read_csv(covariates, index_col="SubjID")
 dashless_columns = pd.Series(demographics.columns.str.split('_')).apply(lambda x: ''.join(str.capitalize(s) for s in x))
 demographics.rename(columns=dict(zip(demographics.columns, dashless_columns)), inplace=True)
-demographics.loc[demographics.Dx3==0, 'Dx3'] = np.nan
-demographics['Cohort'] = np.int32(demographics.Age<18.)
+#demographics.loc[demographics.Dx3==0, 'Dx3'] = np.nan
+demographics.loc[demographics.Subtype.isna(), 'Subtype'] = 0
+demographics['Minor'] = np.int32(demographics.Age<18.)
+demographics['Durill3'] = np.int32(demographics.Durill<3.)
 
 thickness_volume = pd.read_csv(thickness, index_col="SubjID", usecols=lambda x: x!='ICV').merge(pd.read_csv(volume, index_col="SubjID"), left_index=True, right_index=True)
 dashless_columns = pd.Series(thickness_volume.columns.str.split('_')).apply(lambda x: ''.join(str.capitalize(s) for s in x))
@@ -44,11 +48,9 @@ to_keep = np.all(~demographics[covar_regressors].isna(), axis=1)
 demographics = demographics.loc[to_keep, :]
 thickness_volume = thickness_volume.loc[to_keep, :]
 
-
 demographics.to_csv(f"{output_dir}/Demographics.csv")
 thickness_volume.to_csv(f"{output_dir}/CT_Volume.csv")
 
-logging.debug("\n\nDATAFRAMES GENERATED")
 
 #-----------------------------------------------------------------------------------------------------------------
 
@@ -105,7 +107,7 @@ logging.debug("\n\nDATA ZSCORED")
 
 # Generate graphs and extract metrics
 
-thresholds = np.arange(95,101, 1)
+thresholds = np.arange(97,101, 1)
 
 demographics = pd.read_csv(f"{output_dir}/Demographics.csv", index_col="SubjID")
 zscores = pd.read_csv(f"{output_dir}/Data_zscores.csv", index_col="SubjID")
@@ -126,7 +128,7 @@ def get_metrics(M, thr, nodes):
     
     B = nx.from_numpy_matrix(M)
     B = nx.relabel_nodes(B, dict(zip(B, nodes)))
-    B = nx.algorithms.full_diagnostics(B)
+    B = nx.algorithms.full_diagnostics(B, swi=False, swi_niter=10, swi_nrand=2, swi_seed=None, n_jobs=-1, prefer=None)
     
     attributes = B.nodes[nodes[0]].keys()
     metric_dict = {metric: nx.get_node_attributes(B, metric) for metric in attributes}
@@ -161,27 +163,51 @@ logging.debug("\n\nGRAPH METRICS EXTRACTED")
 
 # Summary stats
 
+import pandas as pd
+import numpy as np
+from joblib import Parallel, delayed
+import warnings
+import networkx as nx
+from scipy import stats
+from sklearn.linear_model import LinearRegression
+import logging
+
 demographics = pd.read_csv(f"{output_dir}/Demographics.csv", index_col="SubjID")
 gmetrics = pd.read_csv(f"{output_dir}/Graph_metrics.csv", index_col="SubjID")
 metrics = gmetrics.columns.to_list()
 stat_list = [np.nanmean, np.nanstd, np.nanmedian, stats.iqr, 'count']
-groups = ['Dx', 'Dx3', 'Subtype', 'Cohort']
+groups = ['Dx', 'Dx3', 'Subtype', 'Minor', 'Durill3']
 
 
-stat_list = [ 'count', np.nanvar, np.nanmean, np.nanstd, np.nanmedian, stats.iqr]
-contrasts = [['Dx'], 
-             ['Dx', 'Cohort'],
-             ['Dx', 'Dx3'], 
-             ['Dx', 'Subtype'],  
-             ['Dx', 'Dx3', 'Subtype']]
+
+stat_list = ['count', np.nanvar, np.nanmean, np.nanstd, np.nanmedian, stats.iqr]
+contrasts = [['Dx', 'Dx3'],
+             ['Dx', 'Dx3','Minor'],  
+             ['Dx', 'Dx3', 'Subtype'],
+             ['Dx', 'Dx3', 'Durill3']]
 
 
-Ks = gmetrics.Density.unique()
-K_ranges = np.array([(Kmin, Kmax) for Kmin in Ks for Kmax in Ks[Ks>Kmin]])
+
+Ks = np.arange(gmetrics.Density.min(), gmetrics.Density.max()+1, 1)
+K_ranges = np.array([(Kmin, Kmax) for Kmin in Ks for Kmax in Ks[Ks>=Kmin+1]])
 
 for Kmin, Kmax in K_ranges:
     AUC = gmetrics[(gmetrics.Density >= Kmin) & (gmetrics.Density <= Kmax)].groupby('SubjID').sum()
     AUC = AUC.merge(demographics, left_index=True, right_index=True)
+    
+    
+    group_Rs = []
+    for group in demographics.Dx3.unique():
+        R = AUC[AUC.Dx3==group].corr(method='spearman')[demographics.columns]
+        R.Dx3 = group
+        group_Rs.append(R)
+        
+    R_table = pd.concat(group_Rs).sort_values('Dx3')
+    R_table['Kmin'] = Kmin
+    R_table['Kmax'] = Kmax
+    
+    R_table.to_csv(f"{output_dir}/Group_correlations_K{Kmin}-{Kmax}.csv")
+    
     
     group_stats = [AUC.groupby(groups).agg(stat_list).stack().reset_index().rename(columns={f'level_{len(groups)}':'Stat'})
                    for i, groups in enumerate(contrasts)]
@@ -190,16 +216,9 @@ for Kmin, Kmax in K_ranges:
         data.sort_values(contrasts[i] + ['Stat'])
         data['Contrast'] = i
 
-    aggregation_table = pd.concat(group_stats).set_index(['Contrast', 'Dx', 'Dx3', 'Subtype', 'Cohort']).reset_index()
+    aggregation_table = pd.concat(group_stats).set_index(['Contrast', 'Dx', 'Dx3', 'Subtype', 'Minor', 'Durill3']).reset_index()
     aggregation_table['Kmin'] = Kmin
     aggregation_table['Kmax'] = Kmax
     
     aggregation_table.to_csv(f"{output_dir}/Group_stats_K{Kmin}-{Kmax}.csv")
-    
-    
-
-logging.debug(f"\n\nLocal variables:{list(locals())}")
-
-logging.debug(f"\n\nOUTPUT TABLES GENERATED")
-
-    
+        
