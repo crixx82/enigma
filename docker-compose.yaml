@@ -2,7 +2,7 @@ services:
   panel:
     build:
       args:
-        user: {YOUR-USER-NAME}
+        user: fralberti
         uid: 5000
       context: ./
       dockerfile: Dockerfile

@@ -6,6 +6,8 @@ thickness = f"{data_dir}/CorticalMeasuresENIGMA_ThickAvg.csv"
 volume = f"{data_dir}/SubcorticalMeasuresENIGMA_VolAvg.csv"
 output_dir = f"/home/output"
 
+nj = -1
+
 #-----------------------------------------------------------------------------------------------------------------
 
 
@@ -20,7 +22,12 @@ from scipy import stats
 from sklearn.linear_model import LinearRegression
 import logging
 
-logging.basicConfig(filename=f"{output_dir}/log", level=logging.DEBUG)
+logging.basicConfig(filename=f"{output_dir}/log.txt", level=logging.DEBUG)
+existing = []
+def log_func(existing):
+	new = {key:type(value) for key, value in locals().items() if key not in existing}
+	existing.extend([key for key in locals() if key not in existing])
+	return new
 #-----------------------------------------------------------------------------------------------------------------
 
 
@@ -48,9 +55,10 @@ to_keep = np.all(~demographics[covar_regressors].isna(), axis=1)
 demographics = demographics.loc[to_keep, :]
 thickness_volume = thickness_volume.loc[to_keep, :]
 
-demographics.to_csv(f"{output_dir}/Demographics.csv")
-thickness_volume.to_csv(f"{output_dir}/CT_Volume.csv")
+demographics.to_csv(f"{data_dir}/Demographics.csv")
+thickness_volume.to_csv(f"{data_dir}/CT_Volume.csv")
 
+logging.debug("\n\nDATAFRAME CREATED\n{log_func(existing)}")
 
 #-----------------------------------------------------------------------------------------------------------------
 
@@ -63,11 +71,11 @@ def covar_correct(X, Y, data):
         r = data[y] - LinearRegression(n_jobs=1).fit(data[X], data[y]).predict(data[X])
         return r
     
-    R = Parallel(n_jobs=-1)(delayed(get_resid)(X, y, data) for y in Y)
+    R = Parallel(n_jobs=nj)(delayed(get_resid)(X, y, data) for y in Y)
     return np.asanyarray(R).T
 
-demographics = pd.read_csv(f"{output_dir}/Demographics.csv", index_col="SubjID")
-thickness_volume = pd.read_csv(f"{output_dir}/CT_Volume.csv", index_col="SubjID")
+demographics = pd.read_csv(f"{data_dir}/Demographics.csv", index_col="SubjID")
+thickness_volume = pd.read_csv(f"{data_dir}/CT_Volume.csv", index_col="SubjID")
 brain_regions = thickness_volume.columns                               
                                
 data = demographics[['Age', 'Hand']].merge(thickness_volume, left_index=True, right_index=True)
@@ -79,17 +87,17 @@ residuals = thickness_volume.copy()
 residuals[brain_regions] = covar_correct(X, Y, data)
 
 
-residuals.to_csv(f"{output_dir}/Data_residuals.csv")
+residuals.to_csv(f"{data_dir}/Data_residuals.csv")
 
-logging.debug("\n\nDATA CORRECTED FOR CONFOUNDS")
+logging.debug("\n\nDATA CORRECTED FOR CONFOUNDS\n{log_func(existing)}")
 
 #-----------------------------------------------------------------------------------------------------------------
 
 
 # Normalize on healthy subjects
 
-demographics = pd.read_csv(f"{output_dir}/Demographics.csv", index_col="SubjID")
-residuals = pd.read_csv(f"{output_dir}/Data_residuals.csv", index_col="SubjID")
+demographics = pd.read_csv(f"{data_dir}/Demographics.csv", index_col="SubjID")
+residuals = pd.read_csv(f"{data_dir}/Data_residuals.csv", index_col="SubjID")
 residuals = thickness_volume.merge(demographics['Dx'], left_index=True, right_index=True)
 
 mu = residuals.groupby('Dx').mean()
@@ -98,9 +106,9 @@ sd = residuals.groupby('Dx').std()
 zscores = ((residuals - mu.loc[0]) / sd.loc[0]).drop('Dx', axis=1)
 
 
-zscores.to_csv(f"{output_dir}/Data_zscores.csv")
+zscores.to_csv(f"{data_dir}/Data_zscores.csv")
 
-logging.debug("\n\nDATA ZSCORED")
+logging.debug("\n\nDATA ZSCORED\n{log_func(existing)}")
 
 #-----------------------------------------------------------------------------------------------------------------
 
@@ -109,7 +117,7 @@ logging.debug("\n\nDATA ZSCORED")
 
 thresholds = np.arange(97,101, 1)
 
-demographics = pd.read_csv(f"{output_dir}/Demographics.csv", index_col="SubjID")
+demographics = pd.read_csv(f"{data_dir}/Demographics.csv", index_col="SubjID")
 zscores = pd.read_csv(f"{output_dir}/Data_zscores.csv", index_col="SubjID")
 demo_columns = demographics.columns
 brain_regions = zscores.columns
@@ -128,7 +136,7 @@ def get_metrics(M, thr, nodes):
     
     B = nx.from_numpy_matrix(M)
     B = nx.relabel_nodes(B, dict(zip(B, nodes)))
-    B = nx.algorithms.full_diagnostics(B, swi=False, swi_niter=10, swi_nrand=2, swi_seed=None, n_jobs=-1, prefer=None)
+    B = nx.algorithms.full_diagnostics(B, swi=True, swi_niter=10, swi_nrand=2, swi_seed=None, n_jobs=nj, prefer=None)
     
     attributes = B.nodes[nodes[0]].keys()
     metric_dict = {metric: nx.get_node_attributes(B, metric) for metric in attributes}
@@ -138,7 +146,7 @@ def get_metrics(M, thr, nodes):
 
 results = {}
 for thr in thresholds:
-    r = Parallel(n_jobs=1)(delayed(get_metrics)(joint_variation(v), thr, brain_regions) for _, v in zscores.iterrows())
+    r = Parallel(n_jobs=nj)(delayed(get_metrics)(joint_variation(v), thr, brain_regions) for _, v in zscores.iterrows())
     results.update({thr: dict(zip(zscores.index, r))})
 
 output_df = pd.DataFrame([[subj, thr] for subj in results[thr].keys() for thr in results.keys()], columns=['SubjID', 'Density']).set_index('SubjID')
@@ -156,7 +164,7 @@ for metric in metrics:
         
 output_df.to_csv(f"{output_dir}/Graph_metrics.csv")
 
-logging.debug("\n\nGRAPH METRICS EXTRACTED")
+logging.debug("\n\nGRAPH METRICS EXTRACTED\n{log_func(existing)}")
 
 #-----------------------------------------------------------------------------------------------------------------
 
@@ -172,7 +180,7 @@ from scipy import stats
 from sklearn.linear_model import LinearRegression
 import logging
 
-demographics = pd.read_csv(f"{output_dir}/Demographics.csv", index_col="SubjID")
+demographics = pd.read_csv(f"{data_dir}/Demographics.csv", index_col="SubjID")
 gmetrics = pd.read_csv(f"{output_dir}/Graph_metrics.csv", index_col="SubjID")
 metrics = gmetrics.columns.to_list()
 stat_list = [np.nanmean, np.nanstd, np.nanmedian, stats.iqr, 'count']
@@ -222,3 +230,5 @@ for Kmin, Kmax in K_ranges:
     
     aggregation_table.to_csv(f"{output_dir}/Group_stats_K{Kmin}-{Kmax}.csv")
         
+        
+logging.debug("\n\nSTATISTICS COMPUTED\n{log_func(existing)}")
