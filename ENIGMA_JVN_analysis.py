@@ -136,7 +136,7 @@ def get_metrics(M, thr, nodes):
     
     B = nx.from_numpy_matrix(M)
     B = nx.relabel_nodes(B, dict(zip(B, nodes)))
-    B = nx.algorithms.full_diagnostics(B, swi=True, swi_niter=10, swi_nrand=2, swi_seed=None, n_jobs=nj, prefer=None)
+    B = nx.algorithms.full_diagnostics(B, swi=True, swi_niter=100, swi_nrand=10, swi_seed=None, n_jobs=nj, prefer=None)
     
     attributes = B.nodes[nodes[0]].keys()
     metric_dict = {metric: nx.get_node_attributes(B, metric) for metric in attributes}
