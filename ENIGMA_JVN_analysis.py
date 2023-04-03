@@ -4,10 +4,8 @@ data_dir = "/home/data"
 covariates = f"{data_dir}/Covariates_simulation.csv"
 thickness = f"{data_dir}/CorticalMeasuresENIGMA_ThickAvg.csv"
 volume = f"{data_dir}/SubcorticalMeasuresENIGMA_VolAvg.csv"
-output_dir = f"/home/output"
-
+output_dir = "/home/output"
 #-----------------------------------------------------------------------------------------------------------------
-
 
 # Import dependencies
 
@@ -20,7 +18,7 @@ from scipy import stats
 from sklearn.linear_model import LinearRegression
 import logging
 
-logging.basicConfig(filename=f"{output_dir}/log", level=logging.DEBUG)
+logging.basicConfig(filename=f"{output_dir}/log.txt", level=logging.DEBUG)
 #-----------------------------------------------------------------------------------------------------------------
 
 

@@ -32,8 +32,8 @@ Change the user name on the `docker-compose.yaml` with your subsystem username.
   panel:
     build:
       args:
-        user: YOUR-USER-NAME
-        uid: 1001
+        user: {YOUR-USER-NAME}
+        uid: 5000
       context: ./
       dockerfile: Dockerfile
 .
@@ -43,14 +43,16 @@ Change the user name on the `docker-compose.yaml` with your subsystem username.
 Now you are aready to build the Docker image.
 
 ```bash
-  cd /home/YOUR-USER-NAME/enigma
+  cd /home/{YOUR-USER-NAME}/{OPTIONAL-YOUR-GIT-FOLDER}/enigma
+  chmod 777 output/
+  chmod 777 output/log.txt
   docker compose up
 ```
 
 At the end of the image build process, the analisis script will run and you can find the output on the output project directory:
 
 ```bash
-  cd /home/YOUR-USER-NAME/enigma/data/output
+  cd /home/YOUR-USER-NAME/enigma/output
 ```
 ## Support
 
