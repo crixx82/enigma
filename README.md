@@ -21,11 +21,12 @@ https://docs.docker.com/get-docker/
 
 From a Linux subsystem shall clone the git project on the your home directory.
 
-
 ```bash
   git clone https://github.com/crixx82/enigma.git
 ```
-Change the user name on the `docker-compose.yaml` with your subsystem username.
+If you are not confidential with git flow, you can dawnload the source code in zip format in thr upper right side of the windows. (https://github.com/crixx82/enigma/archive/refs/heads/main.zip).
+Then you need to unzip it in a folder named enigma.
+Find the `docker-compose.yaml` inside enigma and change the placeholder username with your subsystem username.
 ```yaml
 .
 .
@@ -40,13 +41,17 @@ Change the user name on the `docker-compose.yaml` with your subsystem username.
 .
 ```
 
-Now you are aready to build the Docker image.
+Before run Docker, you need to gant privilege to the output project folder. Please keep attention at your project folder location. Now you are aready to build the Docker image.
 
 ```bash
   cd /home/{YOUR-USER-NAME}/{OPTIONAL-YOUR-GIT-FOLDER}/enigma
   chmod 777 output/
   chmod 777 output/log.txt
   docker compose up
+```
+**MacOs users: if the Docker image build process fail tray to delete Docker's configuration.
+```bash
+  rm ~/.docker/config.json
 ```
 
 At the end of the image build process, the analisis script will run and you can find the output on the output project directory:
