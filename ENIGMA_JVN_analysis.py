@@ -22,12 +22,15 @@ from scipy import stats
 from sklearn.linear_model import LinearRegression
 import logging
 
-logging.basicConfig(filename=f"{output_dir}/log.txt", level=logging.DEBUG)
+logging.basicConfig(filename=f"{output_dir}/log.txt",
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    level=logging.DEBUG,
+    datefmt='%Y-%m-%d %H:%M:%S')
 existing = []
-def log_func(existing):
-	new = {key:type(value) for key, value in locals().items() if key not in existing}
-	existing.extend([key for key in locals() if key not in existing])
-	return new
+def log_func(existing, var_dict):
+	new = {key:type(value) for key, value in var_dict.items() if key not in existing}
+	existing.extend([key for key in var_dict if key not in existing])
+	return new, existing
 #-----------------------------------------------------------------------------------------------------------------
 
 
@@ -36,10 +39,11 @@ def log_func(existing):
 demographics = pd.read_csv(covariates, index_col="SubjID")
 dashless_columns = pd.Series(demographics.columns.str.split('_')).apply(lambda x: ''.join(str.capitalize(s) for s in x))
 demographics.rename(columns=dict(zip(demographics.columns, dashless_columns)), inplace=True)
-#demographics.loc[demographics.Dx3==0, 'Dx3'] = np.nan
+
 demographics.loc[demographics.Subtype.isna(), 'Subtype'] = 0
 demographics['Minor'] = np.int32(demographics.Age<18.)
 demographics['Durill3'] = np.int32(demographics.Durill<3.)
+demographics['Age2'] = demographics['Age']**2
 
 thickness_volume = pd.read_csv(thickness, index_col="SubjID", usecols=lambda x: x!='ICV').merge(pd.read_csv(volume, index_col="SubjID"), left_index=True, right_index=True)
 dashless_columns = pd.Series(thickness_volume.columns.str.split('_')).apply(lambda x: ''.join(str.capitalize(s) for s in x))
@@ -58,8 +62,7 @@ thickness_volume = thickness_volume.loc[to_keep, :]
 demographics.to_csv(f"{data_dir}/Demographics.csv")
 thickness_volume.to_csv(f"{data_dir}/CT_Volume.csv")
 
-logging.debug(f"\n\nDATAFRAME CREATED\n{log_func(existing)}")
-
+logging.debug(f"DATAFRAME CREATED\n{log_func(existing, locals())[0]}\n\n")
 #-----------------------------------------------------------------------------------------------------------------
 
 
@@ -89,7 +92,7 @@ residuals[brain_regions] = covar_correct(X, Y, data)
 
 residuals.to_csv(f"{data_dir}/Data_residuals.csv")
 
-logging.debug(f"\n\nDATA CORRECTED FOR CONFOUNDS\n{log_func(existing)}")
+logging.debug(f"DATA CORRECTED FOR CONFOUNDS\n{log_func(existing, locals())[0]}\n\n")
 
 #-----------------------------------------------------------------------------------------------------------------
 
@@ -108,14 +111,13 @@ zscores = ((residuals - mu.loc[0]) / sd.loc[0]).drop('Dx', axis=1)
 
 zscores.to_csv(f"{data_dir}/Data_zscores.csv")
 
-logging.debug("\n\nDATA ZSCORED\n{log_func(existing)}")
-
+logging.debug(f"DATA ZSCORED\n{log_func(existing, locals())[0]}\n\n")
 #-----------------------------------------------------------------------------------------------------------------
 
 
 # Generate graphs and extract metrics
 
-thresholds = np.arange(55,96, 1)
+thresholds = np.arange(95,101, 1)
 
 demographics = pd.read_csv(f"{data_dir}/Demographics.csv", index_col="SubjID")
 zscores = pd.read_csv(f"{data_dir}/Data_zscores.csv", index_col="SubjID")
@@ -136,7 +138,7 @@ def get_metrics(M, thr, nodes):
     
     B = nx.from_numpy_matrix(M)
     B = nx.relabel_nodes(B, dict(zip(B, nodes)))
-    B = nx.algorithms.full_diagnostics(B, swi=True, swi_niter=100, swi_nrand=10, swi_seed=None, n_jobs=nj, prefer=None)
+    B = nx.algorithms.full_diagnostics(B, swi=False, swi_niter=100, swi_nrand=10, swi_seed=None, n_jobs=nj, prefer=None)
     
     attributes = B.nodes[nodes[0]].keys()
     metric_dict = {metric: nx.get_node_attributes(B, metric) for metric in attributes}
@@ -145,9 +147,11 @@ def get_metrics(M, thr, nodes):
 
 
 results = {}
+logging.debug(f"\n\nCOMPUTED METRICS FOR K:")
 for thr in thresholds:
     r = Parallel(n_jobs=nj)(delayed(get_metrics)(joint_variation(v), thr, brain_regions) for _, v in zscores.iterrows())
     results.update({thr: dict(zip(zscores.index, r))})
+    logging.debug(f"\t{thr}")
 
 output_df = pd.DataFrame([[subj, thr] for subj in results[thr].keys() for thr in results.keys()], columns=['SubjID', 'Density']).set_index('SubjID')
 
@@ -164,21 +168,11 @@ for metric in metrics:
         
 output_df.to_csv(f"{output_dir}/Graph_metrics.csv")
 
-logging.debug(f"\n\nGRAPH METRICS EXTRACTED\n{log_func(existing)}")
-
+logging.debug(f"GRAPH METRICS COMPUTED\n{log_func(existing, locals())[0]}\n\n")
 #-----------------------------------------------------------------------------------------------------------------
 
 
-# Summary stats
-
-import pandas as pd
-import numpy as np
-from joblib import Parallel, delayed
-import warnings
-import networkx as nx
-from scipy import stats
-from sklearn.linear_model import LinearRegression
-import logging
+# Group stats
 
 demographics = pd.read_csv(f"{data_dir}/Demographics.csv", index_col="SubjID")
 gmetrics = pd.read_csv(f"{output_dir}/Graph_metrics.csv", index_col="SubjID")
@@ -196,8 +190,39 @@ contrasts = [['Dx', 'Dx3'],
 
 
 
-Ks = np.arange(gmetrics.Density.min(), gmetrics.Density.max()+1, 5)
-K_ranges = np.array([(Kmin, Kmax) for Kmin in Ks for Kmax in Ks[Ks>=Kmin+10]])
+Ks = np.arange(gmetrics.Density.min(), gmetrics.Density.max()+1, 1)
+K_ranges = np.array([(Kmin, Kmax) for Kmin in Ks for Kmax in Ks[Ks>=Kmin+3]])
+
+for Kmin, Kmax in K_ranges:
+    AUC = gmetrics[(gmetrics.Density >= Kmin) & (gmetrics.Density <= Kmax)].groupby('SubjID').sum()
+    AUC = AUC.merge(demographics, left_index=True, right_index=True)
+
+    group_stats = [AUC.groupby(groups).agg(stat_list).stack().reset_index().rename(columns={f'level_{len(groups)}':'Stat'})
+                   for i, groups in enumerate(contrasts)]
+    
+    for i, data in enumerate(group_stats):
+        data.sort_values(contrasts[i] + ['Stat'])
+        data['Contrast'] = i
+
+    aggregation_table = pd.concat(group_stats).set_index(['Contrast', 'Dx', 'Dx3', 'Subtype', 'Minor', 'Durill3']).reset_index()
+    aggregation_table['Kmin'] = Kmin
+    aggregation_table['Kmax'] = Kmax
+    
+    aggregation_table.to_csv(f"{output_dir}/Group_stats_K{Kmin}-{Kmax}.csv")
+        
+        
+logging.debug(f"GROUP STATS COMPUTED\n{log_func(existing, locals())[0]}\n\n")
+#-----------------------------------------------------------------------------------------------------------------
+
+# Correlation coefficients
+
+demographics = pd.read_csv(f"{data_dir}/Demographics.csv", index_col="SubjID")
+gmetrics = pd.read_csv(f"{output_dir}/Graph_metrics.csv", index_col="SubjID")
+metrics = gmetrics.columns.to_list()
+
+
+Ks = np.arange(gmetrics.Density.min(), gmetrics.Density.max()+1, 1)
+K_ranges = np.array([(Kmin, Kmax) for Kmin in Ks for Kmax in Ks[Ks>=Kmin+3]])
 
 for Kmin, Kmax in K_ranges:
     AUC = gmetrics[(gmetrics.Density >= Kmin) & (gmetrics.Density <= Kmax)].groupby('SubjID').sum()
@@ -214,21 +239,55 @@ for Kmin, Kmax in K_ranges:
     R_table['Kmin'] = Kmin
     R_table['Kmax'] = Kmax
     
-    R_table.to_csv(f"{output_dir}/Group_correlations_K{Kmin}-{Kmax}.csv")
-    
-    
-    group_stats = [AUC.groupby(groups).agg(stat_list).stack().reset_index().rename(columns={f'level_{len(groups)}':'Stat'})
-                   for i, groups in enumerate(contrasts)]
-    
-    for i, data in enumerate(group_stats):
-        data.sort_values(contrasts[i] + ['Stat'])
-        data['Contrast'] = i
+    R_table.to_csv(f"{output_dir}/Correlations_K{Kmin}-{Kmax}.csv")
+        
+        
+logging.debug(f"CORRELATIONS COMPUTED\n{log_func(existing, locals())[0]}\n\n")
+#-----------------------------------------------------------------------------------------------------------------
 
-    aggregation_table = pd.concat(group_stats).set_index(['Contrast', 'Dx', 'Dx3', 'Subtype', 'Minor', 'Durill3']).reset_index()
-    aggregation_table['Kmin'] = Kmin
-    aggregation_table['Kmax'] = Kmax
+# Regression models
+
+import statsmodels.formula.api as sm
+
+
+demographics = pd.read_csv(f"{data_dir}/Demographics.csv", index_col="SubjID")
+gmetrics = pd.read_csv(f"{output_dir}/Graph_metrics.csv", index_col="SubjID")[demographics.Dx3==2]
+global_metrics = gmetrics.columns[gmetrics.columns.str.startswith('global')]
+
+def modeldata(formula, data):
+    model = sm.gls(formula, data=data)
+    fitted = model.fit()
     
-    aggregation_table.to_csv(f"{output_dir}/Group_stats_K{Kmin}-{Kmax}.csv")
+    endog = pd.Series('_'.join(model.endog_names.split('_')[1:]), index=['endog'])
+    params = fitted.params.rename(index=dict(zip(fitted.params.index, 'param_' + fitted.params.index)))
+    errors = fitted.bse.rename(index=dict(zip(fitted.params.index, 'bse_' + fitted.bse.index)))
+    pvalues = fitted.pvalues.rename(index=dict(zip(fitted.pvalues.index, 'pvalues_' + fitted.bse.index)))
+    rsquared = pd.Series(fitted.rsquared, index=['rsquared'])
+    rsquared_adj = pd.Series(fitted.rsquared_adj, index=['rsquared_adj'])
+    
+    results = pd.concat([endog, params, errors, pvalues, rsquared, rsquared_adj])
+    return results
+
+Ks = np.arange(gmetrics.Density.min(), gmetrics.Density.max()+1, 1)
+K_ranges = np.array([(Kmin, Kmax) for Kmin in Ks for Kmax in Ks[Ks>=Kmin+3]])
+
+for Kmin, Kmax in K_ranges:
+    AUC = gmetrics[(gmetrics.Density >= Kmin) & (gmetrics.Density <= Kmax)].groupby('SubjID').sum()
+    AUC = AUC.merge(demographics, left_index=True, right_index=True)
+    
+    regression_results = Parallel(n_jobs=nj)(delayed
+                                             (modeldata)
+                                             (f"{metric} ~ Age * Bmi", data=AUC) 
+                                             for metric in global_metrics)
+    
+    regression_table = pd.concat([res for res in regression_results], axis=1).T.set_index('endog')
+    
+
+    regression_table['Kmin'] = Kmin
+    regression_table['Kmax'] = Kmax
+    
+    regression_table.to_csv(f"{output_dir}/Regressions_K{Kmin}-{Kmax}.csv")
         
         
-logging.debug(f"\n\nSTATISTICS COMPUTED\n{log_func(existing)}")
+logging.debug(f"REGRESSION MODELS COMPUTED\n{log_func(existing, locals())[0]}\n\n\n\n")
+#-----------------------------------------------------------------------------------------------------------------
