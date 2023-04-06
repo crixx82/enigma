@@ -17,4 +17,4 @@ python3 /home/scripts/linear_regressions.py
 
 
 
-tar -czvf /home/output/output.tar.gz /home/output
+#tar -czvf /home/output/output.tar.gz /home/
