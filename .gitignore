@@ -3,4 +3,5 @@
 **output/*
 *log*
 !*nullfile.txt
-
+*__pycache__/
+*.ipynb_checkpoints/

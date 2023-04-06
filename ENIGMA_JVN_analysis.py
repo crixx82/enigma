@@ -100,6 +100,7 @@ logging.debug(f"DATA CORRECTED FOR CONFOUNDS\n{log_func(existing, locals())[0]}\
 
 # Normalize on healthy subjects
 
+thickness_volume = pd.read_csv(f"{data_dir}/CT_Volume.csv", index_col="SubjID")
 demographics = pd.read_csv(f"{data_dir}/Demographics.csv", index_col="SubjID")
 residuals = pd.read_csv(f"{data_dir}/Data_residuals.csv", index_col="SubjID")
 residuals = thickness_volume.merge(demographics['Dx'], left_index=True, right_index=True)
@@ -213,7 +214,9 @@ for Kmin, Kmax in K_ranges:
         
         
 logging.debug(f"GROUP STATS COMPUTED\n{log_func(existing, locals())[0]}\n\n")
+
 #-----------------------------------------------------------------------------------------------------------------
+
 
 # Correlation coefficients
 
@@ -245,6 +248,7 @@ for Kmin, Kmax in K_ranges:
         
 logging.debug(f"CORRELATIONS COMPUTED\n{log_func(existing, locals())[0]}\n\n")
 #-----------------------------------------------------------------------------------------------------------------
+
 
 # Regression models
 

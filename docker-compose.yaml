@@ -2,7 +2,7 @@ services:
   panel:
     build:
       args:
-        user: fralberti
+        user: fra
         uid: 5000
       context: ./
       dockerfile: Dockerfile
@@ -13,11 +13,4 @@ services:
     volumes:
       - ./data/:/home/data
       - ./output/:/home/output
-
-
-
-
-
-
-
 
