@@ -1,10 +1,10 @@
 # Input data paths
 
-data_dir = "/home/data"
+data_dir = "./data"
 covariates = f"{data_dir}/Covariates_simulation.csv"
 thickness = f"{data_dir}/CorticalMeasuresENIGMA_ThickAvg.csv"
 volume = f"{data_dir}/SubcorticalMeasuresENIGMA_VolAvg.csv"
-output_dir = f"/home/output"
+output_dir = f"./output"
 
 nj = -1
 
@@ -21,11 +21,12 @@ import networkx as nx
 from scipy import stats
 from sklearn.linear_model import LinearRegression
 import logging
+import argparse
 
 logging.basicConfig(filename=f"{output_dir}/log.txt",
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=logging.DEBUG,
-    datefmt='%Y-%m-%d %H:%M:%S')
+    datefmt='%Y-%m-%d %H:%M:%S %Z')
 existing = []
 def log_func(existing, var_dict):
 	new = {key:type(value) for key, value in var_dict.items() if key not in existing}
