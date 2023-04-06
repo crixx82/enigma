@@ -29,8 +29,8 @@ gmetrics = pd.read_csv(f"{output_dir}/Graph_metrics.csv", index_col="SubjID")
 metrics = gmetrics.columns.to_list()
 
 
-Ks = np.arange(gmetrics.Density.min(), gmetrics.Density.max()+1, 1)
-K_ranges = np.array([(Kmin, Kmax) for Kmin in Ks for Kmax in Ks[Ks>=Kmin+3]])
+Ks = np.arange(gmetrics.Density.min(), gmetrics.Density.max()+1, 5)
+K_ranges = np.array([(Kmin, Kmax) for Kmin in Ks for Kmax in Ks[Ks>=Kmin+10]])
 
 for Kmin, Kmax in K_ranges:
     AUC = gmetrics[(gmetrics.Density >= Kmin) & (gmetrics.Density <= Kmax)].groupby('SubjID').sum()

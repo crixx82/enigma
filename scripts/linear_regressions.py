@@ -45,8 +45,8 @@ def modeldata(formula, data):
     results = pd.concat([endog, params, errors, pvalues, rsquared, rsquared_adj])
     return results
 
-Ks = np.arange(gmetrics.Density.min(), gmetrics.Density.max()+1, 1)
-K_ranges = np.array([(Kmin, Kmax) for Kmin in Ks for Kmax in Ks[Ks>=Kmin+3]])
+Ks = np.arange(gmetrics.Density.min(), gmetrics.Density.max()+1, 5)
+K_ranges = np.array([(Kmin, Kmax) for Kmin in Ks for Kmax in Ks[Ks>=Kmin+10]])
 
 for Kmin, Kmax in K_ranges:
     AUC = gmetrics[(gmetrics.Density >= Kmin) & (gmetrics.Density <= Kmax)].groupby('SubjID').sum()
