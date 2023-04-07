@@ -28,8 +28,12 @@ RUN mkdir -p /home/data && \
     chown -R $user:$user /home/data
 RUN mkdir -p /home/output && \
     chown -R $user:$user /home/output
+RUN mkdir -p /home/scripts && \
+    chown -R $user:$user /home/scripts
 
 COPY --chown=$user:$user ENIGMA_JVN_analysis.py /home
+COPY --chown=$user:$user run_analyses.sh /home
+COPY --chown=$user:$user scripts/* /home/scripts/
 
 COPY --chown=$user:$user requirements.txt requirements.txt
 RUN pip install -r requirements.txt
@@ -41,4 +45,4 @@ RUN tar xf networkx.tar.xz && rm networkx.tar.xz
 
 USER $user
 
-CMD ["python3",  "/home/ENIGMA_JVN_analysis.py"]
+CMD ["bash",  "run_analyses.sh"]
